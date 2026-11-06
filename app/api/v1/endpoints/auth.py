@@ -68,7 +68,7 @@ def login(
     # Same message for "no such email" and "wrong password", so nobody can
     # find out which emails exist.
     if user is None or not verify_password(form_data.password, user.hashed_password):
-        logger.warning("Failed login attempt for email: %s", form_data.username)
+        logger.warning("Failed login attempt for email: %r", form_data.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
