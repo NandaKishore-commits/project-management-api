@@ -47,6 +47,11 @@ class UserCreate(BaseModel):
         return validate_password_strength(v)
 
 
+class UserAdminCreate(UserCreate):
+    """Used only by admins: same as UserCreate, plus a role."""
+    role: RoleName = RoleName.TEAM_MEMBER
+
+
 class UserUpdate(BaseModel):
     full_name: FullName | None = None
     email: EmailStr | None = None
