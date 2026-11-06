@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Project, ProjectMember, User
+from app.models import Project, ProjectMember, Task, User
 from app.utils.enums import RoleName
 
 
@@ -57,3 +57,27 @@ def get_project_for_manage(db: Session, user: User, project_id: int) -> Project:
             status.HTTP_403_FORBIDDEN, "You can manage only projects you belong to"
         )
     return project
+
+def get_task_or_404(db: Session, task_id: int) -> Task:
+    task = db.get(Task, task_id)
+    if task is None or task.is_deleted:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+    return task
+
+
+def get_task_for_view(db: Session, user: User, task_id: int) -> Task:
+    """Loads the task, or raises 404 (missing) / 403 (not in the project)."""
+    task = get_task_or_404(db, task_id)
+    if not can_view_project(db, user, task.project_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not a member of this project")
+    return task
+
+
+def get_task_for_manage(db: Session, user: User, task_id: int) -> Task:
+    """Same, but the user must be allowed to change the task's project."""
+    task = get_task_or_404(db, task_id)
+    if not can_manage_project(db, user, task.project_id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "You can manage only tasks of projects you belong to"
+        )
+    return task

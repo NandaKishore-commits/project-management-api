@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, projects, users
+from app.api.v1.endpoints import auth, projects, tasks, users
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(projects.router)
-# Next steps will add: tasks, comments
+api_router.include_router(tasks.router)
+# Next step will add: comments
