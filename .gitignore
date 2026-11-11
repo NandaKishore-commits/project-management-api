@@ -1,6 +1,19 @@
+# Python
 venv/
+.venv/
 __pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets and local data (never commit these)
 .env
 *.db
 logs/
-.pytest_cache/
+
+# Editors and system files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
