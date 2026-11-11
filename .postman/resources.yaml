@@ -1,0 +1,8 @@
+# Use this workspace to collaborate
+workspace:
+  id: ""
+
+localResources:
+  specs:
+    - ../docs/openapi.json
+    - ../docs/openapi_for_postman.json

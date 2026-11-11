@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging_config import setup_logging
 from app.core.middleware import register_middleware
+from app.core.openapi import API_DESCRIPTION, TAGS_METADATA, install_openapi
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -15,11 +16,18 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
-    description="REST API for managing projects, tasks and teams.",
+    description=API_DESCRIPTION,
+    openapi_tags=TAGS_METADATA,
+    swagger_ui_parameters={
+        "persistAuthorization": True,   # keep the login after a page refresh
+        "displayRequestDuration": True,  # show how long each request took
+        "tryItOutEnabled": True,         # "Try it out" is open at once
+    },
 )
 
 register_middleware(app)
 register_exception_handlers(app)
+install_openapi(app)
 
 app.include_router(api_router, prefix="/api/v1")
 

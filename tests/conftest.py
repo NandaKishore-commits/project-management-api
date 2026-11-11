@@ -93,6 +93,7 @@ def make_user(setup_db):
     def _make(email: str, role: RoleName = RoleName.TEAM_MEMBER, is_active: bool = True) -> dict:
         with TestingSession() as session:
             role_row = session.scalar(select(Role).where(Role.name == role.value))
+            assert role_row is not None, f"Role '{role.value}' is missing from the test database"
             user = User(
                 full_name=email.split("@")[0].title(),
                 email=email,
