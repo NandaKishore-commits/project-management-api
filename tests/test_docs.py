@@ -17,6 +17,13 @@ from app.schemas.user import (
     UserStatusUpdate,
     UserUpdate,
 )
+from app.schemas.task_details import (
+    ChecklistCreate,
+    ChecklistItemCreate,
+    ChecklistItemUpdate,
+    DependencyAdd,
+    WatcherAdd,
+)
 
 MODELS = {
     "UserCreate": UserCreate,
@@ -33,6 +40,11 @@ MODELS = {
     "TaskPriorityUpdate": TaskPriorityUpdate,
     "TaskAssign": TaskAssign,
     "CommentCreate": CommentCreate,
+    "DependencyAdd": DependencyAdd,
+    "ChecklistCreate": ChecklistCreate,
+    "ChecklistItemCreate": ChecklistItemCreate,
+    "ChecklistItemUpdate": ChecklistItemUpdate,
+    "WatcherAdd": WatcherAdd,
 }
 
 
@@ -105,3 +117,4 @@ def test_endpoints_with_input_document_the_clean_422(spec):
 def test_docs_pages_load(client):
     assert client.get("/docs").status_code == 200
     assert client.get("/redoc").status_code == 200
+

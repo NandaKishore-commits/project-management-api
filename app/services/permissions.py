@@ -81,3 +81,13 @@ def get_task_for_manage(db: Session, user: User, task_id: int) -> Task:
             status.HTTP_403_FORBIDDEN, "You can manage only tasks of projects you belong to"
         )
     return task
+
+def get_task_for_work(db: Session, user: User, task_id: int) -> Task:
+    """For work on a task (checklists): an admin, a manager of the project, or the assignee."""
+    task = get_task_or_404(db, task_id)
+    if not (can_manage_project(db, user, task.project_id) or task.assigned_to == user.id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only the assignee or a manager of the project can do this",
+        )
+    return task

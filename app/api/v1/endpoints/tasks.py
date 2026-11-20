@@ -19,6 +19,7 @@ from app.schemas.task import (
     TaskUpdate,
 )
 from app.services.activity import log_activity
+from app.services.notifications import notify, notify_task_audience
 from app.services.permissions import (
     can_manage_project,
     get_project_for_manage,
@@ -28,7 +29,9 @@ from app.services.permissions import (
     is_admin,
     is_project_member,
 )
-from app.utils.enums import ActivityAction, TaskPriority, TaskStatus
+from app.services.task_history import record_change
+from app.services.task_rules import open_prerequisites, open_subtasks, titles_of
+from app.utils.enums import ActivityAction, NotificationType, TaskPriority, TaskStatus
 from app.utils.pagination import paginate
 
 logger = logging.getLogger(__name__)
@@ -82,7 +85,8 @@ def apply_sort(query, sort_by: str, order: str):
     response_model=TaskOut,
     status_code=status.HTTP_201_CREATED,
     summary="Create a task (admin or project manager)",
-    description="New tasks always start as TODO. The assignee must be a member of the project.",
+    description="New tasks always start as TODO. The assignee must be a member of the project. "
+    "Set `parent_task_id` to create a subtask (one level only, same project).",
 )
 def create_task(
     data: TaskCreate,
@@ -91,6 +95,20 @@ def create_task(
 ):
     project = get_project_for_manage(db, current_user, data.project_id)
     check_deadline_in_project(data.deadline, project)
+
+    if data.parent_task_id is not None:
+        parent = db.get(Task, data.parent_task_id)
+        if parent is None or parent.is_deleted:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Parent task not found")
+        if parent.project_id != project.id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "A subtask must be in the same project as its parent task",
+            )
+        if parent.parent_task_id is not None:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "A subtask cannot have its own subtasks"
+            )
 
     assignee = None
     if data.assigned_to is not None:
@@ -108,6 +126,12 @@ def create_task(
         log_activity(
             db, current_user.id, ActivityAction.TASK_ASSIGNED,
             f"Assigned to {assignee.full_name}", project_id=project.id, task_id=task.id,
+        )
+        notify(
+            db, assignee.id, NotificationType.TASK_ASSIGNED,
+            f"New task assigned: {task.title}",
+            f"{current_user.full_name} assigned you a task in '{project.name}'",
+            project_id=project.id, task_id=task.id, actor_id=current_user.id,
         )
     db.commit()
     db.refresh(task)
@@ -196,7 +220,7 @@ def get_task(
     response_model=TaskOut,
     summary="Update a task (admin or project manager)",
     description="Send only the fields you want to change. Status, priority and assignee "
-    "have their own endpoints.",
+    "have their own endpoints. Every change is saved in the task history.",
 )
 def update_task(
     task_id: int,
@@ -213,7 +237,17 @@ def update_task(
     if "deadline" in changes:
         check_deadline_in_project(changes["deadline"], task.project)
 
+    # The schema compares the two dates only when BOTH are sent.
+    # Here we also cover the case where only one is sent.
+    new_start = changes.get("start_date", task.start_date)
+    new_deadline = changes.get("deadline", task.deadline)
+    if new_start and new_deadline and new_deadline < new_start:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "deadline cannot be before start_date"
+        )
+
     for field, value in changes.items():
+        record_change(db, task.id, current_user.id, field, getattr(task, field), value)
         setattr(task, field, value)
     task.updated_by = current_user.id
 
@@ -232,7 +266,9 @@ def update_task(
     response_model=TaskOut,
     summary="Change the status of a task",
     description="Admins and project managers (of the project) can change any task. "
-    "A team member can change only the tasks assigned to them.",
+    "A team member can change only the tasks assigned to them. A task cannot leave TODO "
+    "while a task it depends on is unfinished, and cannot be COMPLETED while it has "
+    "unfinished subtasks.",
 )
 def update_task_status(
     task_id: int,
@@ -253,14 +289,36 @@ def update_task_status(
     if task.status == data.status:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Task is already {data.status.value}")
 
+    if data.status != TaskStatus.TODO:
+        blockers = open_prerequisites(db, task.id)
+        if blockers:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Task is blocked. Finish these tasks first: {titles_of(blockers)}",
+            )
+    if data.status == TaskStatus.COMPLETED:
+        unfinished = open_subtasks(db, task.id)
+        if unfinished:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Finish the subtasks first: {titles_of(unfinished)}",
+            )
+
     old_status = task.status
     task.status = data.status
     task.updated_by = current_user.id
 
+    record_change(db, task.id, current_user.id, "status", old_status, data.status)
     log_activity(
         db, current_user.id, ActivityAction.STATUS_CHANGED,
         f"{old_status.value} -> {data.status.value}",
         project_id=task.project_id, task_id=task.id,
+    )
+    notify_task_audience(
+        db, task, NotificationType.TASK_STATUS_CHANGED,
+        f"Status changed: {task.title}",
+        f"{current_user.full_name}: {old_status.value} -> {data.status.value}",
+        actor_id=current_user.id,
     )
     db.commit()
     db.refresh(task)
@@ -287,6 +345,7 @@ def update_task_priority(
     task.priority = data.priority
     task.updated_by = current_user.id
 
+    record_change(db, task.id, current_user.id, "priority", old_priority, data.priority)
     log_activity(
         db, current_user.id, ActivityAction.PRIORITY_CHANGED,
         f"{old_priority.value} -> {data.priority.value}",
@@ -300,7 +359,10 @@ def update_task_priority(
 @router.patch(
     "/{task_id}/assign",
     response_model=TaskOut,
-    summary="Assign a task to a project member (admin or project manager)",
+    summary="Assign or reassign a task (admin or project manager)",
+    description="Assigns the task to a project member. If the task already had an assignee, "
+    "this is a reassignment: both people are notified and the change is saved in the history. "
+    "`reason` is optional.",
 )
 def assign_task(
     task_id: int,
@@ -314,14 +376,38 @@ def assign_task(
     if task.assigned_to == assignee.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Task is already assigned to this user")
 
+    previous = db.get(User, task.assigned_to) if task.assigned_to else None
+
     task.assigned_to = assignee.id
     task.updated_by = current_user.id
 
+    record_change(
+        db, task.id, current_user.id, "assigned_to",
+        previous.full_name if previous else None, assignee.full_name,
+    )
+    details = f"Assigned to {assignee.full_name}"
+    if data.reason:
+        details += f" (reason: {data.reason})"
     log_activity(
-        db, current_user.id, ActivityAction.TASK_ASSIGNED,
-        f"Assigned to {assignee.full_name}",
+        db, current_user.id, ActivityAction.TASK_ASSIGNED, details,
         project_id=task.project_id, task_id=task.id,
     )
+
+    notify(
+        db, assignee.id, NotificationType.TASK_ASSIGNED,
+        f"Task assigned to you: {task.title}",
+        f"{current_user.full_name} assigned you this task",
+        project_id=task.project_id, task_id=task.id, actor_id=current_user.id,
+    )
+    if previous is not None:
+        message = f"This task was reassigned to {assignee.full_name}"
+        if data.reason:
+            message += f". Reason: {data.reason}"
+        notify(
+            db, previous.id, NotificationType.TASK_REASSIGNED,
+            f"Task reassigned: {task.title}", message,
+            project_id=task.project_id, task_id=task.id, actor_id=current_user.id,
+        )
     db.commit()
     db.refresh(task)
     return task

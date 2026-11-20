@@ -11,6 +11,8 @@ TAGS_METADATA = [
     {"name": "Comments & Activity", "description": "Task comments and the activity history: who did what, and when."},
     {"name": "Dashboard", "description": "Totals, completion percentage, overdue tasks and the most recent activity."},
     {"name": "Health", "description": "Check that the API is running."},
+    {"name": "Task Details", "description": "Subtasks, dependencies, checklists, watchers and the full change history of a task."},
+    {"name": "Notifications", "description": "Your notifications: list, unread count, mark as read."},
 ]
 
 API_DESCRIPTION = """
@@ -54,12 +56,16 @@ def body_examples() -> dict[str, dict[str, Any]]:
         "ProjectCreate": {"name": "Website Redesign", "description": "Redesign the company website", "start_date": _in_days(0), "end_date": _in_days(90)},
         "ProjectUpdate": {"name": "Website Redesign v2"},
         "MemberAdd": {"user_id": 2},
-        "TaskCreate": {"title": "Design homepage", "description": "Create the new homepage layout", "priority": "HIGH", "deadline": _in_days(14), "project_id": 1, "assigned_to": 2},
-        "TaskUpdate": {"title": "Design the new homepage"},
+        "TaskCreate": {"title": "Design homepage", "description": "Create the new homepage layout", "priority": "HIGH", "start_date": _in_days(1), "deadline": _in_days(14), "estimated_hours": 8, "project_id": 1, "assigned_to": 2},        "TaskUpdate": {"title": "Design the new homepage"},
         "TaskStatusUpdate": {"status": "IN_PROGRESS"},
         "TaskPriorityUpdate": {"priority": "CRITICAL"},
-        "TaskAssign": {"assigned_to": 2},
+        "TaskAssign": {"assigned_to": 2, "reason": "Ravi has more capacity this week"},
         "CommentCreate": {"content": "Please use the new brand colors."},
+        "DependencyAdd": {"depends_on_id": 1},
+        "ChecklistCreate": {"title": "Release checklist"},
+        "ChecklistItemCreate": {"content": "Run all tests"},
+        "ChecklistItemUpdate": {"is_done": True},
+        "WatcherAdd": {"user_id": 2},
     }
 
 
