@@ -1130,8 +1130,8 @@
               "example": {
                 "name": "Website Redesign",
                 "description": "Redesign the company website",
-                "start_date": "2026-11-11",
-                "end_date": "2027-02-09"
+                "start_date": "2026-11-21",
+                "end_date": "2027-02-19"
               }
             }
           }
@@ -2278,7 +2278,7 @@
           "Tasks"
         ],
         "summary": "Create a task (admin or project manager)",
-        "description": "New tasks always start as TODO. The assignee must be a member of the project.",
+        "description": "New tasks always start as TODO. The assignee must be a member of the project. Set `parent_task_id` to create a subtask (one level only, same project).",
         "operationId": "create_task_api_v1_tasks_post",
         "security": [
           {
@@ -2296,7 +2296,9 @@
                 "title": "Design homepage",
                 "description": "Create the new homepage layout",
                 "priority": "HIGH",
-                "deadline": "2026-11-25",
+                "start_date": "2026-11-22",
+                "deadline": "2026-12-05",
+                "estimated_hours": 8,
                 "project_id": 1,
                 "assigned_to": 2
               }
@@ -2930,7 +2932,7 @@
           "Tasks"
         ],
         "summary": "Update a task (admin or project manager)",
-        "description": "Send only the fields you want to change. Status, priority and assignee have their own endpoints.",
+        "description": "Send only the fields you want to change. Status, priority and assignee have their own endpoints. Every change is saved in the task history.",
         "operationId": "update_task_api_v1_tasks__task_id__put",
         "security": [
           {
@@ -3151,7 +3153,7 @@
           "Tasks"
         ],
         "summary": "Change the status of a task",
-        "description": "Admins and project managers (of the project) can change any task. A team member can change only the tasks assigned to them.",
+        "description": "Admins and project managers (of the project) can change any task. A team member can change only the tasks assigned to them. A task cannot leave TODO while a task it depends on is unfinished, and cannot be COMPLETED while it has unfinished subtasks.",
         "operationId": "update_task_status_api_v1_tasks__task_id__status_patch",
         "security": [
           {
@@ -3393,7 +3395,8 @@
         "tags": [
           "Tasks"
         ],
-        "summary": "Assign a task to a project member (admin or project manager)",
+        "summary": "Assign or reassign a task (admin or project manager)",
+        "description": "Assigns the task to a project member. If the task already had an assignee, this is a reassignment: both people are notified and the change is saved in the history. `reason` is optional.",
         "operationId": "assign_task_api_v1_tasks__task_id__assign_patch",
         "security": [
           {
@@ -3419,7 +3422,8 @@
                 "$ref": "#/components/schemas/TaskAssign"
               },
               "example": {
-                "assigned_to": 2
+                "assigned_to": 2,
+                "reason": "Ravi has more capacity this week"
               }
             }
           }
@@ -3480,6 +3484,1843 @@
               "application/json": {
                 "example": {
                   "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/subtasks": {
+      "get": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "List the subtasks of a task",
+        "description": "Create a subtask with `POST /tasks` and `parent_task_id`.",
+        "operationId": "list_subtasks_api_v1_tasks__task_id__subtasks_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response List Subtasks Api V1 Tasks  Task Id  Subtasks Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/dependencies": {
+      "post": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Make a task depend on another task (admin or project manager)",
+        "description": "The task cannot leave TODO until the task it depends on is COMPLETED. Both tasks must be in the same project, and loops are rejected.",
+        "operationId": "add_dependency_api_v1_tasks__task_id__dependencies_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DependencyAdd"
+              },
+              "example": {
+                "depends_on_id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencyOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Show what a task depends on, and what waits for it",
+        "operationId": "get_dependencies_api_v1_tasks__task_id__dependencies_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencyOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/dependencies/{depends_on_id}": {
+      "delete": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Remove a dependency (admin or project manager)",
+        "operationId": "remove_dependency_api_v1_tasks__task_id__dependencies__depends_on_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "depends_on_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Depends On Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/checklists": {
+      "post": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Add a checklist to a task",
+        "operationId": "create_checklist_api_v1_tasks__task_id__checklists_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistCreate"
+              },
+              "example": {
+                "title": "Release checklist"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "List the checklists of a task, with their progress",
+        "operationId": "list_checklists_api_v1_tasks__task_id__checklists_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChecklistOut"
+                  },
+                  "title": "Response List Checklists Api V1 Tasks  Task Id  Checklists Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/checklists/{checklist_id}": {
+      "delete": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Delete a checklist and its items",
+        "operationId": "delete_checklist_api_v1_tasks__task_id__checklists__checklist_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "checklist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Checklist Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/checklists/{checklist_id}/items": {
+      "post": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Add an item to a checklist",
+        "description": "Returns the whole checklist, including its progress.",
+        "operationId": "add_checklist_item_api_v1_tasks__task_id__checklists__checklist_id__items_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "checklist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Checklist Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistItemCreate"
+              },
+              "example": {
+                "content": "Run all tests"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/checklists/{checklist_id}/items/{item_id}": {
+      "patch": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Tick or untick a checklist item",
+        "description": "Returns the whole checklist, including its progress.",
+        "operationId": "update_checklist_item_api_v1_tasks__task_id__checklists__checklist_id__items__item_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "checklist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Checklist Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistItemUpdate"
+              },
+              "example": {
+                "is_done": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Delete a checklist item",
+        "operationId": "delete_checklist_item_api_v1_tasks__task_id__checklists__checklist_id__items__item_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "checklist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Checklist Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/watchers": {
+      "post": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Watch a task",
+        "description": "Watchers are notified when the task changes. You can add yourself. Only an admin or a project manager can add other people, who must be project members.",
+        "operationId": "add_watcher_api_v1_tasks__task_id__watchers_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatcherAdd"
+              },
+              "example": {
+                "user_id": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatcherOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "List the watchers of a task",
+        "operationId": "list_watchers_api_v1_tasks__task_id__watchers_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WatcherOut"
+                  },
+                  "title": "Response List Watchers Api V1 Tasks  Task Id  Watchers Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/watchers/{user_id}": {
+      "delete": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Stop watching a task",
+        "description": "You can remove yourself. A manager can remove anyone.",
+        "operationId": "remove_watcher_api_v1_tasks__task_id__watchers__user_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/history": {
+      "get": {
+        "tags": [
+          "Task Details"
+        ],
+        "summary": "Full update history of a task",
+        "description": "Every changed field with its old and new value and who changed it, newest first.",
+        "operationId": "task_history_api_v1_tasks__task_id__history_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TaskHistoryOut_"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A business rule was broken. The `detail` field says which one.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Deadline cannot be after the project end date (2027-01-31)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed to do this.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "You do not have permission to do this"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with existing data, for example a duplicate email.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Email already registered"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ErrorOut"
@@ -4031,6 +5872,343 @@
         ]
       }
     },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "List my notifications",
+        "description": "Newest first. Use `is_read=false` to see only the unread ones.",
+        "operationId": "list_notifications_api_v1_notifications_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Size"
+            }
+          },
+          {
+            "name": "is_read",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Read"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_NotificationOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Number of unread notifications",
+        "operationId": "unread_count_api_v1_notifications_unread_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                },
+                "example": {
+                  "detail": "Not authenticated"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                },
+                "example": {
+                  "detail": "Project not found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                },
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "patch": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark all my notifications as read",
+        "operationId": "mark_all_read_api_v1_notifications_read_all_patch",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkedReadOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                },
+                "example": {
+                  "detail": "Not authenticated"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                },
+                "example": {
+                  "detail": "Project not found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                },
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "patch": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark one notification as read",
+        "operationId": "mark_read_api_v1_notifications__notification_id__read_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token is invalid or expired, or the user is deactivated.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Not authenticated"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The record does not exist, or it was deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The data has the wrong shape. Each wrong field is listed in `errors`.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Validation failed",
+                  "errors": [
+                    {
+                      "field": "deadline",
+                      "message": "Deadline cannot be in the past"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -4067,7 +6245,9 @@
           "PRIORITY_CHANGED",
           "TASK_ASSIGNED",
           "TASK_DELETED",
-          "COMMENT_ADDED"
+          "COMMENT_ADDED",
+          "DEPENDENCY_ADDED",
+          "DEPENDENCY_REMOVED"
         ],
         "title": "ActivityAction"
       },
@@ -4199,6 +6379,109 @@
         ],
         "title": "Body_login_api_v1_auth_login_post"
       },
+      "ChecklistCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "ChecklistCreate"
+      },
+      "ChecklistItemCreate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "ChecklistItemCreate"
+      },
+      "ChecklistItemOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "is_done": {
+            "type": "boolean",
+            "title": "Is Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "content",
+          "is_done"
+        ],
+        "title": "ChecklistItemOut"
+      },
+      "ChecklistItemUpdate": {
+        "properties": {
+          "is_done": {
+            "type": "boolean",
+            "title": "Is Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_done"
+        ],
+        "title": "ChecklistItemUpdate"
+      },
+      "ChecklistOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "progress_percent": {
+            "type": "number",
+            "title": "Progress Percent",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "title",
+          "items",
+          "progress_percent"
+        ],
+        "title": "ChecklistOut"
+      },
       "CommentCreate": {
         "properties": {
           "content": {
@@ -4324,6 +6607,53 @@
         ],
         "title": "DashboardStats"
       },
+      "DependencyAdd": {
+        "properties": {
+          "depends_on_id": {
+            "type": "integer",
+            "title": "Depends On Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "depends_on_id"
+        ],
+        "title": "DependencyAdd"
+      },
+      "DependencyOut": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "depends_on": {
+            "items": {
+              "$ref": "#/components/schemas/TaskBrief"
+            },
+            "type": "array",
+            "title": "Depends On"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskBrief"
+            },
+            "type": "array",
+            "title": "Blocks"
+          },
+          "is_blocked": {
+            "type": "boolean",
+            "title": "Is Blocked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "depends_on",
+          "blocks",
+          "is_blocked"
+        ],
+        "title": "DependencyOut"
+      },
       "ErrorOut": {
         "properties": {
           "detail": {
@@ -4355,6 +6685,19 @@
           "message"
         ],
         "title": "FieldError"
+      },
+      "MarkedReadOut": {
+        "properties": {
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "updated"
+        ],
+        "title": "MarkedReadOut"
       },
       "MemberAdd": {
         "properties": {
@@ -4396,6 +6739,89 @@
           "user"
         ],
         "title": "MemberOut"
+      },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "is_read": {
+            "type": "boolean",
+            "title": "Is Read"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "title",
+          "message",
+          "project_id",
+          "task_id",
+          "is_read",
+          "read_at",
+          "created_at"
+        ],
+        "title": "NotificationOut"
       },
       "Page_ActivityOut_": {
         "properties": {
@@ -4469,6 +6895,42 @@
         ],
         "title": "Page[CommentOut]"
       },
+      "Page_NotificationOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "Page[NotificationOut]"
+      },
       "Page_ProjectOut_": {
         "properties": {
           "items": {
@@ -4504,6 +6966,42 @@
           "pages"
         ],
         "title": "Page[ProjectOut]"
+      },
+      "Page_TaskHistoryOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskHistoryOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "Page[TaskHistoryOut]"
       },
       "Page_TaskOut_": {
         "properties": {
@@ -4825,6 +7323,18 @@
           "assigned_to": {
             "type": "integer",
             "title": "Assigned To"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
           }
         },
         "type": "object",
@@ -4832,6 +7342,28 @@
           "assigned_to"
         ],
         "title": "TaskAssign"
+      },
+      "TaskBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "title": "TaskBrief"
       },
       "TaskCreate": {
         "properties": {
@@ -4856,6 +7388,18 @@
             "$ref": "#/components/schemas/TaskPriority",
             "default": "MEDIUM"
           },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
           "deadline": {
             "anyOf": [
               {
@@ -4867,6 +7411,19 @@
               }
             ],
             "title": "Deadline"
+          },
+          "estimated_hours": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Hours"
           },
           "project_id": {
             "type": "integer",
@@ -4882,6 +7439,17 @@
               }
             ],
             "title": "Assigned To"
+          },
+          "parent_task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Task Id"
           }
         },
         "type": "object",
@@ -4890,6 +7458,63 @@
           "project_id"
         ],
         "title": "TaskCreate"
+      },
+      "TaskHistoryOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "old_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Value"
+          },
+          "new_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Value"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBrief"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "task_id",
+          "field",
+          "old_value",
+          "new_value",
+          "created_at",
+          "user"
+        ],
+        "title": "TaskHistoryOut"
       },
       "TaskOut": {
         "properties": {
@@ -4918,6 +7543,18 @@
           "priority": {
             "$ref": "#/components/schemas/TaskPriority"
           },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
           "deadline": {
             "anyOf": [
               {
@@ -4930,9 +7567,31 @@
             ],
             "title": "Deadline"
           },
+          "estimated_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Hours"
+          },
           "project_id": {
             "type": "integer",
             "title": "Project Id"
+          },
+          "parent_task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Task Id"
           },
           "assigned_to": {
             "anyOf": [
@@ -4978,8 +7637,11 @@
           "description",
           "status",
           "priority",
+          "start_date",
           "deadline",
+          "estimated_hours",
           "project_id",
+          "parent_task_id",
           "assigned_to",
           "created_by",
           "updated_by",
@@ -5068,6 +7730,18 @@
               }
             ]
           },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
           "deadline": {
             "anyOf": [
               {
@@ -5079,6 +7753,19 @@
               }
             ],
             "title": "Deadline"
+          },
+          "estimated_hours": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Hours"
           }
         },
         "type": "object",
@@ -5101,6 +7788,19 @@
           "access_token"
         ],
         "title": "Token"
+      },
+      "UnreadCountOut": {
+        "properties": {
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unread"
+        ],
+        "title": "UnreadCountOut"
       },
       "UserAdminCreate": {
         "properties": {
@@ -5302,6 +8002,47 @@
         ],
         "title": "ValidationErrorOut",
         "description": "Shape of the 422 error from Step 17."
+      },
+      "WatcherAdd": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "WatcherAdd"
+      },
+      "WatcherOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBrief"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "created_at",
+          "user"
+        ],
+        "title": "WatcherOut"
       }
     },
     "securitySchemes": {
@@ -5344,6 +8085,14 @@
     {
       "name": "Health",
       "description": "Check that the API is running."
+    },
+    {
+      "name": "Task Details",
+      "description": "Subtasks, dependencies, checklists, watchers and the full change history of a task."
+    },
+    {
+      "name": "Notifications",
+      "description": "Your notifications: list, unread count, mark as read."
     }
   ]
 }

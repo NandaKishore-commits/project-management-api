@@ -11,8 +11,9 @@ from app.schemas.activity import ActivityOut
 from app.schemas.comment import CommentCreate, CommentOut
 from app.schemas.common import Page
 from app.services.activity import log_activity
+from app.services.notifications import notify_task_audience
 from app.services.permissions import get_project_for_view, get_task_for_view
-from app.utils.enums import ActivityAction
+from app.utils.enums import ActivityAction, NotificationType
 from app.utils.pagination import paginate
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,12 @@ def add_comment(
         db, current_user.id, ActivityAction.COMMENT_ADDED,
         f"Commented on task '{task.title}'",
         project_id=task.project_id, task_id=task.id,
+    )
+    notify_task_audience(
+        db, task, NotificationType.COMMENT_ADDED,
+        f"New comment on: {task.title}",
+        f"{current_user.full_name} added a comment",
+        actor_id=current_user.id,
     )
     db.commit()
     db.refresh(comment)
